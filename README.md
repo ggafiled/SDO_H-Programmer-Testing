@@ -87,18 +87,21 @@ USE SDO_Employee;
 SELECT 
 wsd.EmployeeID, 
 wsd.WorkDate,
-cki.CheckIn,
-cko.CheckOut
+cki.ClockIn,
+cko.ClockOut
+
 
 FROM [WorkSchedule] AS wsd WITH (NOLOCK)
 
-LEFT JOIN (SELECT c.EmployeeID, MIN(c.Clock) AS CheckIn FROM CardScan c WITH (NOLOCK) GROUP BY c.EmployeeID) AS cki ON wsd.EmployeeID = cki.EmployeeID 
-AND CONVERT(date, cki.CheckIn) = CONVERT(date, wsd.WorkDate) AND cki.CheckIn BETWEEN DATEADD(hour, -5, wsd.BeginTime) AND DATEADD(hour, 5, wsd.EndTime)
+OUTER APPLY (SELECT c.EmployeeID, MIN(c.Clock) AS ClockIn FROM CardScan c WITH (NOLOCK) 
+WHERE wsd.EmployeeID = c.EmployeeID AND c.Clock BETWEEN DATEADD(hour, -5, wsd.BeginTime) AND wsd.BeginTime
+GROUP BY c.EmployeeID) AS cki
 
-LEFT JOIN (SELECT c.EmployeeID, MAX(c.Clock) AS CheckOut FROM CardScan c WITH (NOLOCK) GROUP BY c.EmployeeID) AS cko ON wsd.EmployeeID = cko.EmployeeID 
-AND CONVERT(date, cko.CheckOut) = CONVERT(date, wsd.WorkDate) AND cko.CheckOut BETWEEN DATEADD(hour, -5, wsd.BeginTime) AND DATEADD(hour, 5, wsd.EndTime)
+OUTER APPLY (SELECT c.EmployeeID, MAX(c.Clock) AS ClockOut FROM CardScan c WITH (NOLOCK) 
+WHERE wsd.EmployeeID = c.EmployeeID AND c.Clock BETWEEN wsd.EndTime AND DATEADD(hour, 5, wsd.EndTime)
+GROUP BY c.EmployeeID) AS cko
 
-WHERE cki.CheckIn IS NOT NULL
-GROUP BY wsd.EmployeeID, wsd.WorkDate, cki.CheckIn, cko.CheckOut
+WHERE cki.ClockIn IS NOT NULL
+GROUP BY wsd.EmployeeID, wsd.WorkDate, cki.ClockIn, cko.ClockOut
 
 ```
